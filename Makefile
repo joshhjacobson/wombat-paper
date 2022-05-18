@@ -28,11 +28,13 @@ all: 1_transport_targets 2_matching_targets 3_inversion_targets 4_results_target
 
 include $(1_TRANSPORT)/module.mk
 include $(2_MATCHING)/module.mk
+include $(2_MATCHING)/module_mozart.mk
 include $(3_INVERSION)/module.mk
 include $(4_RESULTS)/module.mk
 
 1_transport_targets: $(1_TRANSPORT_TARGETS)
 2_matching_targets: $(2_MATCHING_TARGETS)
+2_matching_mozart_targets: $(2_MATCHING_MOZART_TARGETS)
 3_inversion_targets: $(3_INVERSION_TARGETS)
 4_results_targets: $(4_RESULTS_TARGETS)
 

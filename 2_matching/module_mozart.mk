@@ -1,0 +1,75 @@
+# NOTE(mgnb): convention used in this file: no target depends on a target that
+# occurs earlier in the file
+
+2_MATCHING_SOURCE = $(2_MATCHING)/src
+2_MATCHING_INTERMEDIATES = $(2_MATCHING)/intermediates
+
+$(shell mkdir -p $(2_MATCHING_INTERMEDIATES))
+
+MATCHING_UTILS_PARTIAL = $(2_MATCHING_SOURCE)/partials/utils.R
+export MATCHING_UTILS_PARTIAL
+
+TCCON_DATA = $(DATA)/TCCON/20170706
+OCO2_DATA = $(DATA)/OCO2_b70b_10sec_WL15_GOOD_v10.nc
+
+MOZART_MATCHED_RUNS = $(2_MATCHING_INTERMEDIATES)/MOZART/matched-runs
+
+MOZART_MATCHED_RUNS_LAST_FLUX_AGGREGATED = $(MOZART_MATCHED_RUNS)/LAST_FLUX_AGGREGATED
+
+MOZART_MATCHED_RUNS_LAST_SUBSETTED = $(MOZART_MATCHED_RUNS)/LAST_SUBSETTED
+MOZART_OCO2_SUBSETTED = $(MOZART_MATCHED_RUNS)/run.v12.3.2.base/subsetted-oco2.nc
+
+MOZART_MATCHED_RUNS_LAST_COMPUTED_XCO2 = $(MOZART_MATCHED_RUNS)/LAST_COMPUTED_XCO2
+
+MOZART_MATCHED_RUNS_LAST_COMPUTED_XCO2_3HR = $(MOZART_MATCHED_RUNS)/LAST_COMPUTED_XCO2_3HR
+
+MOZART_MATCHED_RUNS_LAST_COMBINED = $(MOZART_MATCHED_RUNS)/LAST_COMBINED
+
+2_MATCHING_MOZART_TARGETS += $(MOZART_MATCHED_RUNS_LAST_COMPUTED_XCO2) \
+	$(MOZART_MATCHED_RUNS_LAST_SUBSETTED) \
+	$(MOZART_MATCHED_RUNS_LAST_COMBINED) \
+	$(MOZART_MATCHED_RUNS_LAST_FLUX_AGGREGATED) \
+
+LINT_TARGETS += lint_2_matching
+
+## Intermediates
+
+$(MOZART_MATCHED_RUNS_LAST_COMBINED): $(2_MATCHING_SOURCE)/combine.R $(MOZART_MATCHED_RUNS_LAST_COMPUTED_XCO2) $(MOZART_MATCHED_RUNS_LAST_SUBSETTED)
+	Rscript $< \
+		--matched-runs-directory $(MOZART_MATCHED_RUNS)
+	touch $@
+
+$(MOZART_MATCHED_RUNS_LAST_COMPUTED_XCO2_3HR): $(2_MATCHING_SOURCE)/compute-xco2.R
+	Rscript $< \
+		--meteorology-run $(MOZART_BASE_RUN) \
+		--input-runs $(MOZART_RUNS) \
+		--output-runs $(MOZART_MATCHED_RUNS)
+	touch $@
+
+$(MOZART_MATCHED_RUNS_LAST_COMPUTED_XCO2): $(2_MATCHING_SOURCE)/compute-xco2.R $(MOZART_MATCHED_RUNS_LAST_SUBSETTED)
+	Rscript $< \
+		--oco2-observations $(OCO2_DATA) \
+		--tccon-observation-directory $(TCCON_DATA) \
+		--matched-runs-directory $(MOZART_MATCHED_RUNS)
+	touch $@
+
+$(MOZART_MATCHED_RUNS_LAST_SUBSETTED): $(2_MATCHING_SOURCE)/subset-mozart.py $(MOZART_RUNS)/RUNS_COMPLETE
+	python3 $< \
+		--meteorology-run $(MOZART_BASE_RUN) \
+		--oco2-observations $(OCO2_DATA) \
+		--tccon-observation-directory $(TCCON_DATA) \
+		--runs-directory $(MOZART_RUNS) \
+		--output-directory $(MOZART_MATCHED_RUNS)
+	touch $@
+
+$(MOZART_MATCHED_RUNS_LAST_FLUX_AGGREGATED): $(2_MATCHING_SOURCE)/aggregate-flux-mozart.py $(MOZART_RUNS)/RUNS_COMPLETE
+	python3 $< \
+		--runs-directory $(MOZART_RUNS) \
+		--output-directory $(MOZART_MATCHED_RUNS)
+	touch $@
+
+lint_2_matching:
+	pycodestyle \
+		$(2_MATCHING_SOURCE)/subset-mozart.py \
+		$(2_MATCHING_SOURCE)/aggregate-flux-mozart.py \
+		$(2_MATCHING_SOURCE)/mozart
