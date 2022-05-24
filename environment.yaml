@@ -8,7 +8,6 @@ dependencies:
   - r-essentials
   - r-tidyverse
   - python=3.8
-  - jupyter
   - numpy
   - pandas
   - scipy
@@ -17,4 +16,8 @@ dependencies:
   - netcdf4
   - libgdal
   - pkg-config
+  # dev
+  - jupyter
+  - matplotlib
+  - seaborn
   prefix: .conda_env

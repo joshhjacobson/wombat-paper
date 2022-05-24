@@ -1,0 +1,1 @@
+cdo gridarea 1B_model_full/intermediates/GEOS_Chem/runs/run.v12.3.2.base/output/GEOSChem.SpeciesConcDaily.201409.nc4 ~/output.nc4
