@@ -10,4 +10,7 @@
 4_results/figures/
 data/TCCON
 data/OCO2_b70b_10sec_WL15_GOOD_v10.nc
+data/geoschem_*.nc
+data/mozart_*.nc
+figures
 *.pyc
