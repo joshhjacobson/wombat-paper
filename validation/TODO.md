@@ -5,7 +5,7 @@
     - [x] MOZART: concatenate the "CO2_SRF_EMIS_avrg" variable across all files with format outputs/BasisFnsUpdated/yyyymm/*.h0.yyyy-mm-01-03600.nc
     - [x] GEOS Chem: concatenate the "EmisCO2_Total" variable across all files with format runs/run.v12.3.2.base/output/HEMCO_diagnostics.yyyymm.nc, and compute the sum over the pressure levels
 
-- [ ] create single output dataset for each model
+- [x] create single output dataset for each model
     - [x] MOZART: merge first h0 (hourly) file into one large dataset that covers the study period
         - [x] construct pressure edge variable; formula that involves surface pressure (PA), reference pressure (PO), and hybrid coefficients (P0*hyai + PS*hybi) / 100
         - [x] regrid to 1 x 1
@@ -22,8 +22,8 @@
 
 ### Base run
 
-plot maps of vertical average for the very first timestep (hourly version)
- - create difference plot
+- [ ] compute vertical average (pressure levels) for the very first timestep (hourly version) for both models
+    - [ ] map the difference
 
 1. surface level
     - zonal averaging (hovmoller, two plots or difference)
