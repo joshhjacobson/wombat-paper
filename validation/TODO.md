@@ -22,18 +22,18 @@
 
 ### Base run
 
-- [ ] compute vertical average (pressure levels) for the very first timestep (hourly version) for both models
-    - [ ] map the difference
+- [x] compute vertical average (pressure levels) for the very first timestep (hourly version) for both models
+    - [x] map the difference
 
-1. surface level (average surface co2 to monthly)
-    - zonal averaging (hovmoller, two plots or difference)
+- [x] surface level (average surface co2 to monthly)
+    - [x] zonal averaging (hovmoller, two plots or difference)
         - don't need to do area weighting (fixed lat)
-    - global average (time series, two lines on the same plot)
+    - [ ] global average (time series, two lines on the same plot)
 
-2. vertical averages (monthly xco2 files)
-    - longitudinal averages (hovmoller)
-    - zonal averages (hovmoller)
-    - global (time series)
+- [ ] vertical averages (monthly xco2 files)
+    - [ ] longitudinal averages (hovmoller)
+    - [ ] zonal averages (hovmoller)
+    - [ ] global (time series)
         - should be same between mozart and geos chem
 
 
@@ -47,3 +47,6 @@ Focus on monthly analysis
 
 For vertical averaging, see profile.pdf
 equations 1 & 2
+
+MOZART has surface as last element
+GEOS Chem has surface as first element
