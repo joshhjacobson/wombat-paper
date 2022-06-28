@@ -30,10 +30,9 @@
         - don't need to do area weighting (fixed lat)
     - [ ] global average (time series, two lines on the same plot)
 
-- [ ] vertical averages (monthly xco2 files)
-    - [ ] longitudinal averages (hovmoller)
-    - [ ] zonal averages (hovmoller)
-    - [ ] global (time series)
+- [x] vertical averages (monthly xco2 files)
+    - [x] longitudinal averages (hovmoller)
+    - [x] global (time series)
         - should be same between mozart and geos chem
 
 
