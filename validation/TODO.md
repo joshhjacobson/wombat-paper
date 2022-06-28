@@ -28,7 +28,7 @@
 - [x] surface level (average surface co2 to monthly)
     - [x] zonal averaging (hovmoller, two plots or difference)
         - don't need to do area weighting (fixed lat)
-    - [ ] global average (time series, two lines on the same plot)
+    - [x] global average (time series, two lines on the same plot)
 
 - [x] vertical averages (monthly xco2 files)
     - [x] longitudinal averages (hovmoller)
