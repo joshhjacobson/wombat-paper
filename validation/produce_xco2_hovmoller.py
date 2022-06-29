@@ -11,6 +11,8 @@ sns.set()
 ## setup
 target_grid = xe.util.grid_global(1, 1, cf=True)
 date_range = pd.date_range(start="2014-09", end="2017-04", freq="1M")
+END_MONTH = "2017-04-01"
+
 mozart_paths = []
 for month in date_range:
     yyyy, mm, _ = str(month).split("-")
@@ -48,6 +50,8 @@ def compute_xco2(ds, mole_frac_name: str, weights_name: str):
     return (ds[mole_frac_name] * ds[weights_name]).sum(dim="lev") * 1e6
 
 
+print("Setup complete")
+
 ## produce xco2 datasets of monthly longitudinal averages
 
 with xr.open_dataset(mozart_paths[0], decode_times=False) as ds:
@@ -62,7 +66,6 @@ def prep_mozart(ds):
     ds["time"] = pd.to_datetime(ds.date.values, format="%Y%m%d") + pd.to_timedelta(
         ds.datesec.values, unit="seconds"
     )
-    # ds = ds.resample(time="1M").mean()
     ds["pressure_edge"] = get_mozart_pressure_edges(ds)
     ds["pressure_weights"] = compute_pressure_weights(ds, "pressure_edge")
     ds_mozart = regridder_mozart(ds[["CO2_VMR_avrg", "pressure_weights"]])
@@ -77,9 +80,8 @@ with xr.open_mfdataset(
     parallel=True,
     decode_times=False,
 ) as da:
-    da = da.where(da["time"] < pd.to_datetime("2017-04-01"), drop=True)
+    da = da.where(da["time"] < pd.to_datetime(END_MONTH), drop=True)
     da_mozart_xco2_hov = da.resample(time="1M").mean()
-    # da_mozart_xco2_hov = da.where(da["time"] < pd.to_datetime("2017-04-01"), drop=True)
 
 
 with xr.open_mfdataset(
@@ -114,18 +116,16 @@ with xr.open_mfdataset(
     geoschem_spec_conc_glob, preprocess=prep_geoschem, chunks={"time": 1000}, parallel=True
 ) as ds:
     ds["Met_PEDGE"] = da_geoschem_lev["Met_PEDGE"]
-    # NOTE: different order of operations...
-    ds = (
-        ds.where(ds["time"] < pd.to_datetime("2017-04-01"), drop=True)
-        .resample(time="1M")
-        .mean()
-    )
+    ds = ds.where(ds["time"] < pd.to_datetime(END_MONTH), drop=True)
     ds["pressure_weights"] = compute_pressure_weights(ds, "Met_PEDGE")
     ds_geoschem = regridder_geoschem(ds[["SpeciesConc_CO2", "pressure_weights"]])
     da_geoschem_xco2 = compute_xco2(ds_geoschem, "SpeciesConc_CO2", "pressure_weights")
-    da_geoschem_xco2_hov = da_geoschem_xco2.mean(dim="lon")
+    da_geoschem_xco2_hov = da_geoschem_xco2.mean(dim="lon").resample(time="1M").mean()
 
 da_xco2_hov_diff = da_geoschem_xco2_hov - da_mozart_xco2_hov
+
+
+print("Datasets configured")
 
 
 ## create and save the plot
@@ -146,6 +146,8 @@ diff_cbar_ax = fig.add_subplot(gs[1, 2])
 # sub_mozart = da_mozart_xco2_hov.plot(
 #     ax=ax2, vmin=vmin, vmax=vmax, cmap="jet", add_colorbar=False
 # )
+# NOTE: using `robust=True` means the next two panels will technically have different color
+# scales; reset to vmin and vmax once good bounds are determined
 sub_geoschem = da_geoschem_xco2_hov.plot(ax=ax1, robust=True, cmap="jet", add_colorbar=False)
 sub_mozart = da_mozart_xco2_hov.plot(ax=ax2, robust=True, cmap="jet", add_colorbar=False)
 fig.colorbar(sub_geoschem, cax=main_cbar_ax, orientation="horizontal", label="CO2 [ppm]")
@@ -169,3 +171,5 @@ fig.suptitle(
     fontsize=14,
 )
 fig.savefig(f"../figures/hovmoller_lat_xco2.png", dpi=200)
+
+print("DONE")
