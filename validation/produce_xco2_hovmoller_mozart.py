@@ -2,21 +2,7 @@ import pandas as pd
 import xarray as xr
 import xesmf as xe
 
-# TODO: setup dask distributed?
-
-
-## setup
-target_grid = xe.util.grid_global(1, 1, cf=True)
-date_range = pd.date_range(start="2014-09", end="2017-04", freq="1M")
-END_MONTH = "2017-04-01"
-
-mozart_paths = []
-for month in date_range:
-    yyyy, mm, _ = str(month).split("-")
-    mozart_paths.append(
-        f"../1_transport/intermediates/MOZART/output/BasisFnsUpdated/{yyyy}{mm}/"
-        f"BasisFnsUpdated.mz4.h0.{yyyy}-{mm}-01-03600.nc"
-    )
+from dask.distributed import Client
 
 
 def get_mozart_pressure_edges(ds):
@@ -38,43 +24,59 @@ def compute_xco2(ds, mole_frac_name: str, weights_name: str):
     return (ds[mole_frac_name] * ds[weights_name]).sum(dim="lev") * 1e6
 
 
-print("Setup complete")
+if __name__ == "__main__":
 
-## produce xco2 datasets of monthly longitudinal averages
+    client = Client(dashboard_address=0, n_workers=15)  # Connect to distributed cluster
 
-with xr.open_dataset(mozart_paths[0], decode_times=False) as ds:
-    # precompute mozart grid weights
-    ds = ds.isel(time=0)
-    ds["pressure_edge"] = get_mozart_pressure_edges(ds)
-    ds["pressure_weights"] = compute_pressure_weights(ds, "pressure_edge")
-    ds_mozart = ds[["CO2_VMR_avrg", "pressure_weights"]]
-    regridder_mozart = xe.Regridder(ds_mozart, target_grid, "conservative")
+    ## setup
+    target_grid = xe.util.grid_global(1, 1, cf=True)
+    date_range = pd.date_range(start="2014-09", end="2017-04", freq="1M")
+    END_MONTH = "2017-04-01"
 
+    mozart_paths = []
+    for month in date_range:
+        yyyy, mm, _ = str(month).split("-")
+        mozart_paths.append(
+            f"../1_transport/intermediates/MOZART/output/BasisFnsUpdated/{yyyy}{mm}/"
+            f"BasisFnsUpdated.mz4.h0.{yyyy}-{mm}-01-03600.nc"
+        )
 
-def prep_mozart(ds):
-    ds["time"] = pd.to_datetime(ds.date.values, format="%Y%m%d") + pd.to_timedelta(
-        ds.datesec.values, unit="seconds"
-    )
-    print(ds["time"].values[0])
-    ds["pressure_edge"] = get_mozart_pressure_edges(ds)
-    ds["pressure_weights"] = compute_pressure_weights(ds, "pressure_edge")
-    ds_mozart = regridder_mozart(ds[["CO2_VMR_avrg", "pressure_weights"]])
-    da_mozart_xco2 = compute_xco2(ds_mozart, "CO2_VMR_avrg", "pressure_weights")
-    return da_mozart_xco2.mean(dim="lon").resample(time="1M").mean()
+    print("Setup complete")
 
+    ## produce xco2 datasets of monthly longitudinal averages
 
-with xr.open_mfdataset(
-    mozart_paths[4:8],
-    preprocess=prep_mozart,
-    chunks={"time": 1000},
-    parallel=True,
-    decode_times=False,
-) as da:
-    da_mozart_xco2_hov = da.where(da["time"] < pd.to_datetime(END_MONTH), drop=True)
+    with xr.open_dataset(mozart_paths[0], decode_times=False) as ds:
+        # precompute mozart grid weights
+        ds = ds.isel(time=0)
+        ds["pressure_edge"] = get_mozart_pressure_edges(ds)
+        ds["pressure_weights"] = compute_pressure_weights(ds, "pressure_edge")
+        ds_mozart = ds[["CO2_VMR_avrg", "pressure_weights"]]
+        regridder_mozart = xe.Regridder(ds_mozart, target_grid, "conservative")
 
+    def prep_mozart(ds):
+        return ds[["CO2_VMR_avrg", "date", "datesec", "P0", "PS", "hyai", "hybi"]]
 
-print("Dataset configured")
+    with xr.open_mfdataset(
+        mozart_paths,
+        preprocess=prep_mozart,
+        parallel=True,
+        chunks={"time": 24},
+        decode_times=False,
+    ) as ds:
+        ds["time"] = pd.to_datetime(ds["date"].values, format="%Y%m%d") + pd.to_timedelta(
+            ds["datesec"].values, unit="seconds"
+        )
+        ds = ds.where(ds["time"] < pd.to_datetime(END_MONTH), drop=True)
+        ds["pressure_edge"] = get_mozart_pressure_edges(ds)
+        ds["pressure_weights"] = compute_pressure_weights(ds, "pressure_edge")
+        ds_mozart = regridder_mozart(ds[["CO2_VMR_avrg", "pressure_weights"]])
+        da_mozart_xco2 = compute_xco2(ds_mozart, "CO2_VMR_avrg", "pressure_weights")
+        da_mozart_xco2_hov = da_mozart_xco2.mean(dim="lon").resample(time="1M").mean()
 
-da_mozart_xco2_hov.to_netcdf("../data/hovmoller_array_mozart.nc")
+    da_mozart_xco2_hov = da_mozart_xco2_hov.compute()
 
-print("DONE")
+    print("Dataset configured")
+
+    da_mozart_xco2_hov.to_netcdf("../data/hovmoller_array_mozart.nc")
+
+    print("DONE")

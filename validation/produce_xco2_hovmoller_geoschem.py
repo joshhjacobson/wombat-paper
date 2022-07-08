@@ -58,7 +58,7 @@ def prep_geoschem_lev(ds):
 
 
 da_geoschem_lev = xr.open_mfdataset(
-    geoschem_level_edge_glob, preprocess=prep_geoschem_lev, chunks={"time": 1000}, parallel=True
+    geoschem_level_edge_glob, preprocess=prep_geoschem_lev, parallel=True
 )
 
 
@@ -66,9 +66,7 @@ def prep_geoschem(ds):
     return ds[["SpeciesConc_CO2"]]
 
 
-with xr.open_mfdataset(
-    geoschem_spec_conc_glob, preprocess=prep_geoschem, chunks={"time": 1000}, parallel=True
-) as ds:
+with xr.open_mfdataset(geoschem_spec_conc_glob, preprocess=prep_geoschem, parallel=True) as ds:
     ds["Met_PEDGE"] = da_geoschem_lev["Met_PEDGE"]
     ds = ds.where(ds["time"] < pd.to_datetime(END_MONTH), drop=True)
     ds["pressure_weights"] = compute_pressure_weights(ds, "Met_PEDGE")
@@ -76,9 +74,11 @@ with xr.open_mfdataset(
     da_geoschem_xco2 = compute_xco2(ds_geoschem, "SpeciesConc_CO2", "pressure_weights")
     da_geoschem_xco2_hov = da_geoschem_xco2.mean(dim="lon").resample(time="1M").mean()
 
+da_geoschem_xco2_hov = da_geoschem_xco2_hov.compute()
+
 
 print("Dataset configured")
 
-da_geoschem_xco2_hov.to_netcdf("../hovmoller_array_geoschem.nc")
+da_geoschem_xco2_hov.to_netcdf("../data/hovmoller_array_geoschem.nc")
 
 print("DONE")
